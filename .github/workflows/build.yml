@@ -1,0 +1,60 @@
+# This workflow uses actions that are not certified by GitHub.
+# They are provided by a third-party and are governed by
+# separate terms of service, privacy policy, and support
+# documentation.
+
+name: Build Learning OpenGL
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  # Path to the solution file relative to the root of the project.
+  SOLUTION_FILE_PATH: .
+
+permissions:
+  contents: read
+
+jobs:
+  Build:
+    name: Build (${{ matrix.configuration }})
+    continue-on-error : ${{matrix.continue}} 
+    strategy:
+      fail-fast: true
+      matrix:
+        configuration: [Debug]
+        continue: [false]
+        include:
+          - configuration: Release
+            continue: true
+     
+    runs-on: windows-latest
+        
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+        
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Build
+      working-directory: ${{env.GITHUB_WORKSPACE}}
+      # Add additional options to the MSBuild command line here (like platform or verbosity level).
+      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
+      run: msbuild /m /p:Configuration=${{ matrix.configuration }} /p:BuildInParallel=true /property:Platform=x64 ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Create commit hash file (for versioning)
+      run: git rev-parse --short HEAD > D:\a\LearningOpenGL\LearningOpenGL\x64\${{ matrix.configuration }}\commit_hash.txt
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: LearningOpenGL-${{ matrix.configuration }}
+        path: |
+          D:\a\LearningOpenGL\LearningOpenGL\shaders\*.*
+          D:\a\LearningOpenGL\LearningOpenGL\textures\*.*
+          D:\a\LearningOpenGL\LearningOpenGL\x64\${{ matrix.configuration }}\*.exe
+          D:\a\LearningOpenGL\LearningOpenGL\x64\${{ matrix.configuration }}\*.pdb
+          D:\a\LearningOpenGL\LearningOpenGL\x64\${{ matrix.configuration }}\commit_hash.txt
